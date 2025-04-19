@@ -3,17 +3,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { object, string, date } = require('yup');
 
-/*
-Input:
-{   
-    "Name": "usuario",
-    "LastName": "usuario1",
-    "Email": "mail@mail.com",
-    "Password": "Pass2025",
-    "Type": "Admin",
-}
-*/
-
 const validTypes = ["admin", "usuario"];
 
 let UserSchema = object({
@@ -255,7 +244,5 @@ const modify = async (req, res) => {
         return res.status(500).json({ Error: "Error interno del servidor" });
     }
 };
-
-
 
 module.exports = { createUser, login, logout, getUser, getUsers, modify, protected };

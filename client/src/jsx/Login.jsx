@@ -18,7 +18,7 @@ export default function Login() {
         try {
             const response = await login( {email: email, password: password} );
             console.log("Respuesta Backend: ",response)
-            navigate("/users");
+            navigate("/home");
         } catch (error) {
             console.log(error)
             setLoading(false)
@@ -53,7 +53,7 @@ return (
 
     <p className="register-text">
       ¿No tienes cuenta?{" "}
-      <span className="register-link" onClick={() => navigate("/signin")}>
+      <span className="register-link" onClick={() => navigate("/home")}>
         Regístrate aquí.
       </span>
     </p>

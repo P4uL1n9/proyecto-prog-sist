@@ -1,0 +1,41 @@
+.home-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f8f9fa;
+    font-family: sans-serif;
+  }
+  
+  .home-box {
+    width: 500px;
+    padding: 30px;
+    border-radius: 12px;
+    background-color: #fff;
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+    text-align: center;
+  }
+  
+  .home-box h2 {
+    margin-bottom: 20px;
+  }
+  
+  .home-box p {
+    margin-bottom: 15px;
+    color: #444;
+  }
+  
+  .home-box button {
+    margin-top: 10px;
+    padding: 12px 24px;
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .home-box button:hover {
+    background-color: #1b5e20;
+  }  
