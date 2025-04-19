@@ -15,6 +15,7 @@ import {
   MenuItem
 } from "@mui/material";
 import Navbar from "../components/Navbar.jsx";
+import DicomHeaderModal from "../components/DicomHeaderModal";
 
 import * as cornerstone from "cornerstone-core";
 import * as cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
@@ -37,6 +38,8 @@ export default function Viewer() {
   const [imageIds, setImageIds] = useState([]);
   const [status, setStatus] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isNegative, setIsNegative] = useState(false);
+  const [isHighContrast, setIsHighContrast] = useState(false);
   const viewerRef = useRef(null);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,6 +49,9 @@ export default function Viewer() {
   const [selectModalOpen, setSelectModalOpen] = useState(false);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState("");
+
+  const [headerOpen, setHeaderOpen] = useState(false);
+  const [headerData, setHeaderData] = useState({});
 
   const handleOpenModal = () => setModalOpen(true);
   const handleCloseModal = () => {
@@ -61,7 +67,6 @@ export default function Viewer() {
 
   const handleCreateAndUpload = async () => {
     if (!projectName || selectedFiles.length === 0) return;
-
     try {
       await axios.post("/projects/create", { name: projectName }, { withCredentials: true });
 
@@ -69,17 +74,13 @@ export default function Viewer() {
       formData.append("projectName", projectName);
       selectedFiles.forEach(file => formData.append("dicomFiles", file));
 
-      const response = await axios.post(
-        "/dicom/uploadToProject",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          withCredentials: true
-        }
-      );
+      const response = await axios.post("/dicom/uploadToProject", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        withCredentials: true
+      });
 
       const paths = response.data.paths.map(
-        (path) => `wadouri:${process.env.REACT_APP_API_URL}/${path.replace(/\\/g, "/")}`
+        (path) => `wadouri:${basePath}/${path.replace(/\\/g, "/")}`
       );
 
       setImageIds(paths);
@@ -109,10 +110,9 @@ export default function Viewer() {
       const user = await axios.get("/users/getUser", { withCredentials: true });
       const userId = user.data.ID;
 
-      const filesResponse = await axios.get(
-        `/dicom/list/${selectedProject}`,
-        { withCredentials: true }
-      );
+      const filesResponse = await axios.get(`/dicom/list/${selectedProject}`, {
+        withCredentials: true
+      });
 
       const filenames = filesResponse.data;
       const paths = filenames.map(
@@ -129,18 +129,64 @@ export default function Viewer() {
     }
   };
 
+  const showDicomHeader = async () => {
+    try {
+      const element = viewerRef.current;
+      const imageId = imageIds[currentIndex];
+  
+      const image = cornerstone.getImage(element); // imagen ya mostrada
+      const dataSet = image.data;
+  
+      if (!dataSet || !dataSet.string) {
+        throw new Error("No se pudo obtener los metadatos");
+      }
+  
+      const info = {
+        "Patient Name": dataSet.string("x00100010") || "No disponible",
+        "Patient ID": dataSet.string("x00100020") || "No disponible",
+        "Modality": dataSet.string("x00080060") || "No disponible",
+        "Study Date": dataSet.string("x00080020") || "No disponible",
+        "Manufacturer": dataSet.string("x00080070") || "No disponible",
+        "Study Description": dataSet.string("x00081030") || "No disponible",
+        "Series Description": dataSet.string("x0008103e") || "No disponible",
+        "Institution Name": dataSet.string("x00080080") || "No disponible"
+      };
+  
+      setHeaderData(info);
+      setHeaderOpen(true);
+    } catch (err) {
+      console.error("Error al obtener cabecera DICOM:", err);
+      setHeaderData({});
+      setStatus("No se pudo obtener la cabecera DICOM");
+    }
+  };
+  
+
   useEffect(() => {
     if (imageIds.length > 0 && viewerRef.current) {
-      cornerstone.enable(viewerRef.current);
-      cornerstone
-        .loadAndCacheImage(imageIds[currentIndex])
-        .then((image) => cornerstone.displayImage(viewerRef.current, image))
+      const element = viewerRef.current;
+      cornerstone.enable(element);
+
+      cornerstone.loadAndCacheImage(imageIds[currentIndex])
+        .then((image) => {
+          const viewport = cornerstone.getDefaultViewportForImage(element, image);
+          if (image.windowWidth && image.windowCenter) {
+            viewport.voi.windowWidth = image.windowWidth;
+            viewport.voi.windowCenter = image.windowCenter;
+          }
+          viewport.invert = isNegative;
+          if (isHighContrast) {
+            viewport.voi.windowWidth = 1000;
+            viewport.voi.windowCenter = 500;
+          }
+          cornerstone.displayImage(element, image, viewport);
+        })
         .catch((err) => {
           console.error("Error al mostrar imagen:", err);
           setStatus("No se pudo visualizar la imagen DICOM");
         });
     }
-  }, [imageIds, currentIndex]);
+  }, [imageIds, currentIndex, isNegative, isHighContrast]);
 
   return (
     <>
@@ -149,11 +195,20 @@ export default function Viewer() {
         <Button variant="contained" onClick={handleOpenModal} sx={{ mr: 2 }}>
           Crear Proyecto
         </Button>
-        <Button variant="outlined" onClick={fetchProjects}>
+        <Button variant="outlined" onClick={fetchProjects} sx={{ mr: 2 }}>
           Buscar Proyecto
         </Button>
+        <Button variant="outlined" onClick={() => setIsNegative(!isNegative)} sx={{ mr: 2 }}>
+          {isNegative ? "Modo Normal" : "Modo Negativo"}
+        </Button>
+        <Button variant="outlined" onClick={() => setIsHighContrast(!isHighContrast)} sx={{ mr: 2 }}>
+          {isHighContrast ? "Contraste Normal" : "Contraste Alto"}
+        </Button>
+        <Button variant="outlined" onClick={showDicomHeader}>
+          Ver Cabecera DICOM
+        </Button>
 
-        <Typography mt={2} color="text.secondary">
+        <Typography mt={2} sx={{ color: "#ffffff" }}>
           {status}
         </Typography>
 
@@ -163,7 +218,7 @@ export default function Viewer() {
               ref={viewerRef}
               id="dicom-viewer"
               sx={{
-                width: 512,
+                width: 1024,
                 height: 512,
                 margin: "40px auto",
                 border: "2px solid #1976d2",
@@ -178,7 +233,7 @@ export default function Viewer() {
                 onChange={(e, val) => setCurrentIndex(val)}
                 aria-label="Selector de corte"
               />
-              <Typography>
+              <Typography mt={2} sx={{ color: "#ffffff" }}>
                 Corte: {currentIndex + 1} / {imageIds.length}
               </Typography>
             </Box>
@@ -206,7 +261,10 @@ export default function Viewer() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseModal}>Cancelar</Button>
-          <Button onClick={handleCreateAndUpload} disabled={!projectName || selectedFiles.length === 0}>
+          <Button
+            onClick={handleCreateAndUpload}
+            disabled={!projectName || selectedFiles.length === 0}
+          >
             Crear y subir
           </Button>
         </DialogActions>
@@ -234,6 +292,12 @@ export default function Viewer() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <DicomHeaderModal
+        open={headerOpen}
+        onClose={() => setHeaderOpen(false)}
+        headerData={headerData}
+      />
     </>
   );
 }

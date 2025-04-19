@@ -53,7 +53,7 @@ return (
 
     <p className="register-text">
       ¿No tienes cuenta?{" "}
-      <span className="register-link" onClick={() => navigate("/home")}>
+      <span className="register-link" onClick={() => navigate("/signin")}>
         Regístrate aquí.
       </span>
     </p>
