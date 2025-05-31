@@ -11,26 +11,20 @@ import Viewer from './jsx/Viewer';
 function App() {
   return (
     <>
-    <Router> 
+    <Router>
       <div className="App">
-      <Routes>
-        {/* Rutas públicas */}
-        <Route path="/" element={<Login/>} />
-        <Route path="/signin" element={<Signin/>} />
-        {/* Rutas privadas */}
-        <Route path="/*" element={
-            <ProtectedRoute>
-              <>
-                <Routes>
-                  <Route path="/home" element={<Home/>} />
-                  <Route path="/viewer" element={<Viewer/>} />
-                </Routes>
-              </>
-            </ProtectedRoute>
-          } />
-        
-      </Routes>
-    </div>
+        <Routes>
+          {/* Rutas públicas */}
+          <Route path="/" element={<Login />} />
+          <Route path="/signin" element={<Signin />} />
+
+          {/* Rutas protegidas */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/home" element={<Home />} />
+            <Route path="/viewer" element={<Viewer />} />
+          </Route>
+        </Routes>
+      </div>
     </Router>
   </>
   );
